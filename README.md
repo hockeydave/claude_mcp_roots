@@ -1,6 +1,11 @@
 # MCP Chat with File System Access
 MCP Chat is a command-line interface application that enables interactive chat capabilities with AI models through the Anthropic API. The application supports file system operations with controlled access to explicitly allowed directories, video conversion capabilities, and extensible tool integrations via the MCP architecture.
 
+## MCP Specification
+github.com/modelcontextprotocol/modelcontextprotocol
+* Defines how MCP clients and servers should behave
+* Defines all the different valid message types (Typescript)
+
 ## Prerequisites
 - Python 3.10+
 - Anthropic API Key

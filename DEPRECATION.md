@@ -1,3 +1,30 @@
+## Deprecated roots capability replaced with explicit tool access
+I rewrote the project to avoid the deprecated MCP roots pattern and instead use:
+
+* explicit tool parameters
+* server-side allow-list enforcement via ALLOWED_ROOTS
+* removed the list_roots/roots callback usage
+
+# Updated files
+* main.py
+* mcp_client.py
+* mcp_server.py
+# What changed
+* The client no longer sets up a roots callback.
+* The server no longer calls ctx.session.list_roots().
+* The server accepts a configured allow-list from the environment:
+# ALLOWED_ROOTS
+* Tools now operate on explicit paths, for example:
+* read_dir(path=...)
+* convert_video(input_path=..., format=...)
+
+
+
+
+
+
+## From Anthropic Deprecation Message
+
 The "Roots" feature in Anthropic's Model Context Protocol (MCP) is deprecated.
 The feature was officially deprecated as of the July 28, 2026 specification update (MCP v2 / SEP-2577).
 
