@@ -1,9 +1,13 @@
-from typing import List
-from mcp.types import Prompt, PromptMessage
+from typing import Any, Awaitable, Callable, List, cast
+
 from anthropic.types import MessageParam
+from mcp.types import Prompt, PromptMessage
+
 from core.chat import Chat
 from core.claude import Claude
 from mcp_client import MCPClient
+
+
 class CliChat(Chat):
     def __init__(
         self,
@@ -13,53 +17,77 @@ class CliChat(Chat):
     ):
         super().__init__(clients=clients, claude_service=claude_service)
         self.doc_client: MCPClient = doc_client
+
     async def list_prompts(self) -> list[Prompt]:
         return await self.doc_client.list_prompts()
+
     async def get_prompt(
         self, command: str, doc_id: str
     ) -> list[PromptMessage]:
-        return await self.doc_client.get_prompt(command, {"doc_id": doc_id})
+        get_prompt = cast(
+            Callable[[str, dict[str, str]], Awaitable[list[PromptMessage]]],
+            getattr(self.doc_client, "get_prompt"),
+        )
+        return await get_prompt(command, {"doc_id": doc_id})
+
     async def _process_query(self, query: str):
         self.messages.append({"role": "user", "content": query})
+
+
+def _field_value(obj: Any, key: str) -> Any:
+    if isinstance(obj, dict):
+        return cast(dict[str, Any], obj).get(key)
+    return getattr(obj, key, None)
+
+
 def convert_prompt_message_to_message_param(
     prompt_message: "PromptMessage",
 ) -> MessageParam:
     role = "user" if prompt_message.role == "user" else "assistant"
-    content = prompt_message.content
-    # Check if content is a dict-like object with a "type" field
-    if isinstance(content, dict) or hasattr(content, "__dict__"):
-        content_type = (
-            content.get("type", None)
-            if isinstance(content, dict)
-            else getattr(content, "type", None)
-        )
+    content: Any = prompt_message.content
+
+    if isinstance(content, dict):
+        content_dict = cast(dict[str, Any], content)
+        content_type = _field_value(content_dict, "type")
         if content_type == "text":
-            content_text = (
-                content.get("text", "")
-                if isinstance(content, dict)
-                else getattr(content, "text", "")
+            return cast(
+                MessageParam,
+                {"role": role, "content": str(_field_value(content_dict, "text") or "")},
             )
-            return {"role": role, "content": content_text}
+    elif hasattr(content, "__dict__"):
+        content_obj = content
+        content_type = _field_value(content_obj, "type")
+        if content_type == "text":
+            return cast(
+                MessageParam,
+                {"role": role, "content": str(_field_value(content_obj, "text") or "")},
+            )
+
     if isinstance(content, list):
-        text_blocks = []
-        for item in content:
-            # Check if item is a dict-like object with a "type" field
-            if isinstance(item, dict) or hasattr(item, "__dict__"):
-                item_type = (
-                    item.get("type", None)
-                    if isinstance(item, dict)
-                    else getattr(item, "type", None)
-                )
-                if item_type == "text":
-                    item_text = (
-                        item.get("text", "")
-                        if isinstance(item, dict)
-                        else getattr(item, "text", "")
+        text_blocks: list[dict[str, str]] = []
+        items = cast(list[Any], content)
+        for item in items:
+            if isinstance(item, dict):
+                item_dict = cast(dict[str, Any], item)
+                if _field_value(item_dict, "type") == "text":
+                    text_blocks.append(
+                        {"type": "text", "text": str(_field_value(item_dict, "text") or "")}
                     )
-                    text_blocks.append({"type": "text", "text": item_text})
+            elif hasattr(item, "__dict__"):
+                item_obj = item
+                if _field_value(item_obj, "type") == "text":
+                    text_blocks.append(
+                        {"type": "text", "text": str(_field_value(item_obj, "text") or "")}
+                    )
         if text_blocks:
-            return {"role": role, "content": text_blocks}
-    return {"role": role, "content": ""}
+            return cast(
+                MessageParam,
+                {"role": role, "content": text_blocks},
+            )
+
+    return cast(MessageParam, {"role": role, "content": ""})
+
+
 def convert_prompt_messages_to_message_params(
     prompt_messages: List[PromptMessage],
 ) -> List[MessageParam]:

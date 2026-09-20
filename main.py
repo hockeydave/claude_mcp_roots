@@ -33,9 +33,9 @@ async def main():
     env = os.environ.copy()
     env["ALLOWED_ROOTS"] = json.dumps(root_paths)
 
-    clients = {}
+    clients: dict[str, MCPClient] = {}
     async with AsyncExitStack() as stack:
-        doc_client = await stack.enter_async_context(
+        doc_client: MCPClient = await stack.enter_async_context(
             MCPClient(
                 command="uv",
                 args=["run", "mcp_server.py"],

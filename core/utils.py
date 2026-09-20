@@ -1,6 +1,9 @@
+from os import PathLike
 from pathlib import Path
 from urllib.parse import unquote, urlparse
-def file_url_to_path(file_url) -> Path:
+
+
+def file_url_to_path(file_url: str | PathLike[str]) -> Path:
     """Convert a file:// URL to a Path object."""
     url_str = str(file_url)
     parsed = urlparse(url_str)

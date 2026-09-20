@@ -1,13 +1,17 @@
 import json
-from typing import Optional, Literal, List
-from mcp.types import CallToolResult, Tool, TextContent
-from mcp_client import MCPClient
+from typing import Any, List, Literal, Optional
+
 from anthropic.types import Message, ToolResultBlockParam
+from mcp.types import CallToolResult
+
+from mcp_client import MCPClient
+
+
 class ToolManager:
     @classmethod
-    async def get_all_tools(cls, clients: dict[str, MCPClient]) -> list[Tool]:
+    async def get_all_tools(cls, clients: dict[str, MCPClient]) -> list[dict[str, Any]]:
         """Gets all tools from the provided clients."""
-        tools = []
+        tools: list[dict[str, Any]] = []
         for client in clients.values():
             tool_models = await client.list_tools()
             tools += [
@@ -71,12 +75,15 @@ class ToolManager:
                 tool_output: CallToolResult | None = await client.call_tool(
                     tool_name, tool_input
                 )
-                items = []
+                items: list[Any] = []
                 if tool_output:
-                    items = tool_output.content
-                content_list = [
-                    item.text for item in items if isinstance(item, TextContent)
-                ]
+                    items = list(tool_output.content)
+                content_list: list[str] = []
+                for item in items:
+                    if hasattr(item, "text"):
+                        text = getattr(item, "text")
+                        if isinstance(text, str):
+                            content_list.append(text)
                 content_json = json.dumps(content_list)
                 tool_result_part = cls._build_tool_result_part(
                     tool_use_id,
